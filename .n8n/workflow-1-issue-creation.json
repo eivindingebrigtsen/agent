@@ -1,0 +1,119 @@
+{
+  "name": "Gitflow: 1 - Task Intake & Issue Creation",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "ui": {
+        "description": "Manually trigger the workflow with a task description.",
+        "fields": {
+          "string": [
+            {
+              "displayName": "Task Description",
+              "name": "task_description",
+              "type": "string",
+              "default": "",
+              "placeholder": "e.g., Add a new endpoint /api/users"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "parameters": {
+        "prompt": "You are a senior project manager. Based on the following task, create a structured GitHub issue. The issue should include a clear description, a list of acceptance criteria, and a high-level technical plan. Format the output as `Title: [Your Title]\n\nBody: [Your Markdown Body]`.",
+        "model": "gemini-pro",
+        "text": "={{ $json.task_description }}"
+      },
+      "name": "AI Agent: Create Issue Content",
+      "type": "n8n-nodes-base.aiAgent",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "geminiApi": {
+          "id": "YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Gemini API credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "owner": "eivindingebrigtsen",
+        "repository": "agent",
+        "title": "={{ $('Function: Parse AI Output').item.json.title }}",
+        "body": "={{ $('Function: Parse AI Output').item.json.body }}"
+      },
+      "name": "GitHub: Create Issue",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 3,
+      "position": [
+        950,
+        300
+      ],
+      "credentials": {
+        "githubApi": {
+          "id": "YOUR_GITHUB_API_CREDENTIAL_ID",
+          "name": "GitHub API credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const output = $('AI Agent: Create Issue Content').item.json.output;\nconst titleMatch = output.match(/Title: (.*)/);\nconst bodyMatch = output.match(/Body: ((.|\n)*)/);\n\nconst title = titleMatch ? titleMatch[1] : 'AI Failed to Generate Title';\nconst body = bodyMatch ? bodyMatch[1] : 'AI Failed to Generate Body';\n\nreturn { title, body };"
+      },
+      "name": "Function: Parse AI Output",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 2,
+      "position": [
+        720,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "AI Agent: Create Issue Content",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "AI Agent: Create Issue Content": {
+      "main": [
+        [
+          {
+            "node": "Function: Parse AI Output",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Function: Parse AI Output": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Create Issue",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "1"
+}

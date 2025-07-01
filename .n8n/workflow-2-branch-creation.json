@@ -1,0 +1,94 @@
+
+{
+  "name": "Gitflow: 2 - Branch & PR Creation",
+  "nodes": [
+    {
+      "parameters": {
+        "githubApi": "YOUR_GITHUB_API_CREDENTIAL_ID",
+        "events": [
+          "issues.opened"
+        ]
+      },
+      "name": "GitHub Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "YOUR_WEBHOOK_ID"
+    },
+    {
+      "parameters": {
+        "owner": "eivindingebrigtsen",
+        "repository": "agent",
+        "operation": "createBranch",
+        "branchName": "={{ 'feature/issue-' + $json.body.issue.number + '-' + $json.body.issue.title.toLowerCase().replace(/ /g, '-') }}",
+        "sourceBranchName": "master"
+      },
+      "name": "GitHub: Create Branch",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 3,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "githubApi": {
+          "id": "YOUR_GITHUB_API_CREDENTIAL_ID",
+          "name": "GitHub API credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "owner": "eivindingebrigtsen",
+        "repository": "agent",
+        "operation": "createPullRequest",
+        "title": "={{ 'WIP: ' + $json.body.issue.title }}",
+        "head": "={{ 'feature/issue-' + $json.body.issue.number + '-' + $json.body.issue.title.toLowerCase().replace(/ /g, '-') }}",
+        "base": "master",
+        "body": "={{ 'Closes #' + $json.body.issue.number }}",
+        "draft": true
+      },
+      "name": "GitHub: Create PR",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 3,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "githubApi": {
+          "id": "YOUR_GITHUB_API_CREDENTIAL_ID",
+          "name": "GitHub API credential"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GitHub Trigger": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Create Branch",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "GitHub: Create Branch": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Create PR",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "2"
+}

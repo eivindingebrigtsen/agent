@@ -1,0 +1,87 @@
+{
+  "name": "Gitflow: 3 - Code Generation",
+  "nodes": [
+    {
+      "parameters": {
+        "githubApi": "YOUR_GITHUB_API_CREDENTIAL_ID",
+        "events": [
+          "pull_request.opened"
+        ]
+      },
+      "name": "GitHub Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "YOUR_WEBHOOK_ID"
+    },
+    {n      "parameters": {
+        "prompt": "You are a software developer. Based on the description in this Pull Request and its linked issue, you need to write the code. The repository structure is [provide structure if possible]. The relevant files are likely `[file1.js]`, `[file2.py]`. Your task is to generate the code modifications required. Output the full, updated content of each file you need to change in a JSON format: `[{\"filePath\": \"src/routes/users.js\", \"newContent\": \"...\"}]`",
+        "model": "gemini-pro",
+        "text": "={{ $json.body.pull_request.body }}"
+      },
+      "name": "AI Agent: Generate Code",
+      "type": "n8n-nodes-base.aiAgent",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "geminiApi": {
+          "id": "YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Gemini API credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "owner": "eivindingebrigtsen",
+        "repository": "agent",
+        "operation": "createComment",
+        "issueNumber": "={{ $json.body.pull_request.number }}",
+        "body": "={{ '```json\\n' + JSON.stringify($('AI Agent: Generate Code').item.json.output, null, 2) + '\\n```' }}"
+      },
+      "name": "GitHub: Post Code as Comment",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 3,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "githubApi": {
+          "id": "YOUR_GITHUB_API_CREDENTIAL_ID",
+          "name": "GitHub API credential"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GitHub Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent: Generate Code",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "AI Agent: Generate Code": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Post Code as Comment",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "3"
+}

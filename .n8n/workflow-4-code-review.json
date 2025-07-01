@@ -1,0 +1,121 @@
+
+{
+  "name": "Gitflow: 4 - Code Review",
+  "nodes": [
+    {
+      "parameters": {
+        "githubApi": "YOUR_GITHUB_API_CREDENTIAL_ID",
+        "events": [
+          "pull_request.synchronize"
+        ]
+      },
+      "name": "GitHub Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "YOUR_WEBHOOK_ID"
+    },
+    {
+      "parameters": {
+        "owner": "eivindingebrigtsen",
+        "repository": "agent",
+        "operation": "getPullRequestDiff",
+        "pullRequestNumber": "={{ $json.body.pull_request.number }}"
+      },
+      "name": "GitHub: Get Diff",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 3,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "githubApi": {
+          "id": "YOUR_GITHUB_API_CREDENTIAL_ID",
+          "name": "GitHub API credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "prompt": "You are a senior code reviewer. Analyze the following diff. Check for bugs, style issues, security vulnerabilities, and adherence to best practices. Provide your feedback as a formal PR review.",
+        "model": "gemini-pro",
+        "text": "={{ $('GitHub: Get Diff').item.json.diff }}"
+      },
+      "name": "AI Agent: Review Code",
+      "type": "n8n-nodes-base.aiAgent",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ],
+      "credentials": {
+        "geminiApi": {
+          "id": "YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Gemini API credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "owner": "eivindingebrigtsen",
+        "repository": "agent",
+        "operation": "createReview",
+        "pullRequestNumber": "={{ $json.body.pull_request.number }}",
+        "body": "={{ $('AI Agent: Review Code').item.json.output }}",
+        "event": "COMMENT"
+      },
+      "name": "GitHub: Post Review",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 3,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "githubApi": {
+          "id": "YOUR_GITHUB_API_CREDENTIAL_ID",
+          "name": "GitHub API credential"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "GitHub Trigger": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Get Diff",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "GitHub: Get Diff": {
+      "main": [
+        [
+          {
+            "node": "AI Agent: Review Code",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "AI Agent: Review Code": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Post Review",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "4"
+}

@@ -1,0 +1,120 @@
+{
+  "name": "Gitflow: 5 - Review Triage",
+  "nodes": [
+    {
+      "parameters": {
+        "githubApi": "YOUR_GITHUB_API_CREDENTIAL_ID",
+        "events": [
+          "pull_request_review.submitted"
+        ]
+      },
+      "name": "GitHub Trigger",
+      "type": "n8n-nodes-base.githubTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "YOUR_WEBHOOK_ID"
+    },
+    {
+      "parameters": {
+        "prompt": "You are a triage developer. Read the following review comments. For each comment, classify it as 'simple' or 'complex'. A simple fix is a one-line change (e.g., fixing a typo, renaming a variable). A complex fix requires more logic. For simple fixes, provide the exact code change. For complex fixes, write a title and body for a new GitHub issue. Output a JSON object: `{\"simpleFixes\": [{\"comment\": \"...\", \"change\": \"...\"}], \"newIssues\": [{\"title\": \"...\", \"body\": \"...\"}]}`",
+        "model": "gemini-pro",
+        "text": "={{ $json.body.review.body }}"
+      },
+      "name": "AI Agent: Triage Review",
+      "type": "n8n-nodes-base.aiAgent",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "credentials": {
+        "geminiApi": {
+          "id": "YOUR_GEMINI_API_CREDENTIAL_ID",
+          "name": "Gemini API credential"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $('AI Agent: Triage Review').item.json.output.newIssues.length > 0 }}",
+              "operation": "true"
+            }
+          ]
+        }
+      },
+      "name": "IF: New Issues?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        750,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "owner": "eivindingebrigtsen",
+        "repository": "agent",
+        "operation": "createIssue",
+        "title": "={{ $json.title }}",
+        "body": "={{ $json.body }}"
+      },
+      "name": "GitHub: Create Issue",
+      "type": "n8n-nodes-base.github",
+      "typeVersion": 3,
+      "position": [
+        1000,
+        200
+      ],
+      "credentials": {
+        "githubApi": {
+          "id": "YOUR_GITHUB_API_CREDENTIAL_ID",
+          "name": "GitHub API credential"
+        }
+      },
+      "loopOverItems": {
+        "items": "={{ $('AI Agent: Triage Review').item.json.output.newIssues }}"
+      }
+    }
+  ],
+  "connections": {
+    "GitHub Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent: Triage Review",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "AI Agent: Triage Review": {
+      "main": [
+        [
+          {
+            "node": "IF: New Issues?",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "IF: New Issues?": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Create Issue",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "id": "5"
+}
